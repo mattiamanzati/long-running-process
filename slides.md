@@ -392,7 +392,6 @@ layout: fact
 ## ACID may exist only locally
 
 <!--
-
 The key thing is that as long we are trying to couple two different systems together, we cannot have classic ACID transactions.
 
 So did we learn that ACID transactions are useless because we always have at least two systems? Not quite.
@@ -401,12 +400,13 @@ They exists, but they can be relied only into a local scope for each service.
 The software may perform consistent writes to its storage.
 As user I can guarantee to always provide a response to each question I receive.
 Does it mean that we can also guarantee that the interaction between these two systems will always be correct and consistent?
-
 -->
 
 ---
+layout: fact
+---
 
-## Distributed transactions
+## ...distributed transactions?
 
 <!--
 Well here we come to the concept of a distributed transaction.
@@ -475,11 +475,11 @@ Remember our food burnt example?
 
 In an ACID transaction you can simply rollback and that's it as they never happened. Whathever you did before did'nt commits.
 
-TODO
-
 In a saga the catch is that instead you need to explicitly write a "compensating transaction" that basically undoes what its corresponding transaction did.
 
 If a failure happens downstream, you need to ensure somehow that you'll be executing all the compensating transactions for each transaction you succefully performed before.
+
+And in that wayyou can guarantee that your system will be someday back into a consistet state.
 -->
 
 ---
@@ -531,9 +531,10 @@ And finally we have Pivot transactions.
 
 Let's say that the customer has eaten the food, if later the payment fails, we cannot have back the food and cancel the order placed.
 
-This kind of transaction defines point of no going back, and usually instead of being compensated, the user may trigger another entire flow based on domain rules to try to fix what happened. Maybe we try to speak to the customer and ask for another card, or just let him know that today he will clean the dishes in the kitchen.
--->
+This kind of transaction defines point of no going back, and usually instead of being compensated, the user may trigger another entire flow based on domain rules to try to fix what happened. 
 
+Maybe we try to speak to the customer and ask for another card, or just let him know that today he will clean the dishes in the kitchen.
+-->
 
 ---
 
@@ -590,7 +591,7 @@ One way to do it would be to replace all of our calls with a "step" function cal
 -->
 ---
 
-## Simple coordinator implementation
+## Simple implementation
 
 ```ts {all}
 async function saga<R>(definition: (step: StepFn) => Promise<R>) {
@@ -615,7 +616,37 @@ async function saga<R>(definition: (step: StepFn) => Promise<R>) {
 The first implementation of this distributed transaction coordinator is very simple.
 
 Given a function that takes a definition, we first create a list to keep track of compensations that need to be run.
-The step function is now the unit of work that will basically attempt to run ourtransaction, if it succeed it will push its compensating transaction onto the stack, and if it fails, it will instedstartto call all the compensating transaction inside of our compensations stack.
+
+The step function is now the unit of work that will basically attempt to run ourtransaction, if it succeed it will push its compensating transaction onto the stack, and if it fails, it will instead start to call all the compensating transaction inside of our compensations stack.
+-->
+
+---
+layout: showcase-left
+image: /image-saga-failure.gif
+---
+
+## Compensation handling
+<br/>
+
+```mermaid { scale: 0.75}
+
+flowchart TD
+
+    subgraph a1["Transaction"]
+    direction LR
+    A[ProcessPayment] --> B[MarkTableAsClosed]
+    B --> C[SendThankYouEmail]
+    end
+    subgraph b1["Compensation Transaction"]
+    direction LR
+    D[RefundPayment]
+    E[OpenTable]-->D
+    end
+    C-->|EmailFailure|E
+    B-->|PaymentFailure|D
+```
+<!--
+Back to our example we can se now how the flow will run upon a failure of the closing of a table.
 -->
 
 ---
@@ -627,8 +658,29 @@ layout: fact
 <!--
 And that needs to be somehow be coordinated to ensure that we either execute succefully all the transaction, or all the compensating transactions.
 
-And in order to ensure that, the only way we can do that is through durable persistance of an orchestrator that tracks each step being executed and what to execute next (either next transaction or continue compensating).
+And in order to ensure that, the only way we can do that is through durable persistance of an orchestrator that tracks each step being executed (either next transaction or continue compensating).
 
+-->
+
+---
+
+## Waiting is part of the business process
+
+<br/>
+
+```mermaid
+flowchart LR
+    A[ProcessPayment] --> B[MarkTableAsClosed]
+    B --> C[WaitFor1Week]
+    C --> D[SendThankYouEmail]
+```
+
+<!--
+And that is required because now our flow is also potentially able to wait for some condition to happen in order to resume execution.
+
+Our system may for example wait few days before sending the thank you email, like 1 week for example.
+
+From a business point it makes more sense to send the email later to maybe remember to the customer how good his experience was that maybe he will come again to the restaurant.
 -->
 
 ---
@@ -728,6 +780,20 @@ But we seem to lack isolation here...
 
 ---
 
+## Lack of isolation
+
+- Potential inconsistent reads
+- Potential writes in between other flows
+
+<br/>
+
+```mermaid
+flowchart LR
+    A[PlaceOrder] --> B[ProcessPayment]
+    B --> C[CloseTable]
+    C --> D[SendThankYouEmail]
+```
+
 <!--
 And now due to the lack of isolation we introduced an additional business problem to our domain.
 
@@ -764,12 +830,29 @@ Unlike sagas where a transaction may take time to complete, in statecharts state
 -->
 ---
 
+## StateCharts are a DSL rather than Code
+
+- Can be visually shown
+- Can be understood by domain experts
+- Creates a shared language between devs and experts
+
 <!--
 And this model is really great because it's simple for domain experts and developers to lay out events on a timeline, and check out how the flow should happen, working together on a common language that may be understood by both parts.
 
 And thanks to the visual tools (and I am excited to see what's next with AI) designing statecharts it's something that can be done by everyone and clearly understood with a quick birds eye view without having a dive inside the code.
 -->
 
+---
+
+## StateCharts are fully serializable
+
+<!--
+And statecharts are so invested in being its own JSON or SCXML format is great because are both formats that are fully serializable and persistent.
+
+And that property of being fully serializable is great because it allows to have a cheap solution for versioning long running processes.
+
+One could just store the JSON definition along side the persistence of the current state of the machine, and only implementations of services and actions are injected at runtime into the interpreter.
+-->
 
 ---
 
@@ -782,16 +865,8 @@ flowchart LR
 
 ---
 
-# Long Running Process
+## Long Running Process
 
-
-
----
-Agenda:
-
-
-- Going multiple steps means persisting each step
-
-- StateCharts
-- Saga
-- Actor model
+- Involve multiple systems: they can be orchestration or choreography
+- Persistent: because the process may last forever even server restarts
+- Versionable: because business requirements may change
