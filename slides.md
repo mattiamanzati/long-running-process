@@ -377,6 +377,9 @@ In both cases we are dealing and interacting with services that given an input, 
 
 ## User is an external service too
 
+- Input: screen
+- Output: key presses and clicks
+
 <!--
 And if you think about it, every application has at least two system interacting.
 
