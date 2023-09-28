@@ -9,11 +9,12 @@ drawings:
 transition: slide-left
 title: Processes, StateCharts and WorkFlows
 layout: image
-background: ./image-cover.jpeg
+image: /image-cover.jpeg
 mdc: true
 download: true
 canvasWidth: 850
 ---
+
 
 ---
 
@@ -437,12 +438,143 @@ This approach may seem very simple, but there are things to deal with.
 
 ---
 
-# A communication 
+# A communication layer
+
+- Is needed in order to connect each transaction
+- Communication becomes part of the transaction as well
+
+<br/>
+
+```mermaid
+flowchart LR
+  subgraph a1[MarkTableAsClosed]
+    direction LR
+    A[OpenTransaction] --> B[UpdateFlagInTable]
+    B --> C[PutMessageInCommunicationQueue]
+    C --> D[CommitTransaction]
+  end
+```
 
 <!--
 Here we have just find out the first requirement of this kind of distributed transactions, which is a messaging or communication system.
 
 And that is required in order to communicate between services and kick of next transaction as soon the previous one finishes, and that messaging and communication service can be implemented however you like, but again the key is that it is used to coordinate execution of all the steps.
+
+And the other requirement is that this comunication step should be done with the lowest risk of failure inside our local transaction.
+
+And that is because if that step fails, we end up stopping our entire flow with no signal to the other steps.
+-->
+
+---
+
+## Two kinds of coordination: choreography
+<br/>
+
+```ts
+module Payment
+  on "BillRequested"
+    processPaiment()
+    raise event PaymentProcessed()
+end module
+
+module Table
+  on "PaymentProcessed"
+    closeTable()
+    raise event TableClosed()
+end module
+
+module Satisfaction
+  on "TableClosed"
+    sendThankYouEmail()
+    raise event ThankYouSent()
+end module
+```
+
+<!--
+The introduction of a communication system introduce two possibile ways of organize the coordination between the systems.
+
+The first one is called choreography, and is based on a long chain of events.
+Each service will basically listen for the previous event to be triggered, perform it's work, and then raise a communication event in order to continue processing.
+-->
+
+---
+layout: two-cols
+---
+
+## Two kinds of coordination: 
+<br/>
+
+```ts
+module Payment
+  on "ProcessPaymentRequest"
+    processPaiment()
+    raise event PaymentProcessed()
+end module
+
+module Table
+  on "CloseTableRequest"
+    closeTable()
+    raise event TableClosed()
+end module
+
+module Satisfaction
+  on "SendThankYouEmailRequest"
+    sendThankYouEmail()
+    raise event ThankYouSent()
+end module
+```
+
+::right::
+
+## orchestration
+<br/>
+```ts
+module CloseTableFlow
+  raise event ProcessPaymentRequest()
+  await PaymentProcessed()
+  raise event CloseTableRequest()
+  await TableClosed()
+  raise event SendThankYouEmailRequest()
+end module
+```
+
+<!--
+The other option is called orchestration, and instead of placing the flow logic inside of each service, what we do instead is leave each service to perform its business, and instead rely on an external service that will listen to all the events raised by all the partecipants and coordinate all the steps to perform.
+
+This second approach makes more clear the execution flow because now its again colocated in a single place instead of being spread all over the place.
+
+-->
+---
+
+## Introducing new flows in our application
+<br/>
+
+```ts
+module OfferLiquorFlow
+  const liquorId = ProductId(42)
+  const [tableId, numberOfGuest] = await event GuestSeated()
+  await PaymentRequested()
+  raise event PlaceOrder(tableId, liquorId, numberOfGuest)
+end module
+```
+
+<!--
+
+It is also better because if a new flow is introduced, let's say for example that when the bill is requested we whant to deliver a goodby liquor for free to the table, we do not need to change the code of the existing services, but instead we introduce a new orchestrator that listens for PaymentRequest, and places an order of a liquor automatically on the table based on the number of guest seated.
+-->
+---
+layout: fact
+---
+
+## What happens with failures?
+
+<!--
+Imagine a longer flow with up to 25 transactions, and arriving at the 20th and decide that for some business rule you cannot continue.
+
+Remember our food burnt example?
+
+In an ACID transaction you can simply rollback and that's it as they never happened. Whathever you did before did'nt commits.
+
 -->
 
 ---
@@ -469,11 +601,6 @@ flowchart LR
 ```
 
 <!--
-Imagine a longer flow with up to 25 transactions, and arriving at the 20th and decide that for some business rule you cannot continue.
-
-Remember our food burnt example?
-
-In an ACID transaction you can simply rollback and that's it as they never happened. Whathever you did before did'nt commits.
 
 In a saga the catch is that instead you need to explicitly write a "compensating transaction" that basically undoes what its corresponding transaction did.
 
@@ -516,7 +643,7 @@ Another kind of transaction are the retriable one.
 
 One example of that may be sending an email, if we are dealing with a system that cannot fail but may be unstable, we may try to send that email as many times as we want, instead of rolling back the payment just because an email failed to send.
 
-TODORETRYOLICI
+And this kind of transactions introduce a completely different problem that's worth it'own talk and that's retry policy. Because somehow you'll need to follow a retry schedule andmaybe after an amount of retries you'll give up.
 -->
 
 ---
@@ -650,19 +777,6 @@ Back to our example we can se now how the flow will run upon a failure of the cl
 -->
 
 ---
-layout: fact
----
-
-## What happens if the process stops?
-
-<!--
-And that needs to be somehow be coordinated to ensure that we either execute succefully all the transaction, or all the compensating transactions.
-
-And in order to ensure that, the only way we can do that is through durable persistance of an orchestrator that tracks each step being executed (either next transaction or continue compensating).
-
--->
-
----
 
 ## Waiting is part of the business process
 
@@ -676,11 +790,24 @@ flowchart LR
 ```
 
 <!--
-And that is required because now our flow is also potentially able to wait for some condition to happen in order to resume execution.
+And now that we have this kind of system in place, we may begin to have some time related business requirements for our workflow.
 
 Our system may for example wait few days before sending the thank you email, like 1 week for example.
 
 From a business point it makes more sense to send the email later to maybe remember to the customer how good his experience was that maybe he will come again to the restaurant.
+-->
+
+---
+layout: fact
+---
+
+## What happens if the process stops?
+
+<!--
+Sure, our asyncronous function may just hang for 1 week with no problem, but what if for some reason the servers restart do that mean that we lose all our running process state?
+
+That's not an option for sure, in order to be resilient to that kind of situation, the only solution is to involve some kind of durable persistance of the orchestrator state that keeps track of what has already been executed.
+
 -->
 
 ---
@@ -823,6 +950,25 @@ To be precise I will speak about statecharts, that is a formalism for creating s
 
 ---
 
+## Payment flow using State Machines
+<br/>
+
+```mermaid { scale: 0.75}
+%% Generated with Stately Studio
+stateDiagram-v2
+  state "Payment" as Machine_Name {
+    [*] --> Machine_Name.WaitingForCardNumber
+    Machine_Name.ProcessingPayment --> Machine_Name.PaymentFailed : PAYMENT_FAILED
+    Machine_Name.WaitingForCardNumber --> Machine_Name.ProcessingPayment : CARD_NUMBER_PROVIDED
+    Machine_Name.PaymentFailed --> Machine_Name.WaitingForCardNumber : TRY_ANOTHER_CARD
+    Machine_Name.ProcessingPayment --> Machine_Name.BillPaid : PAYMENT_SUCCEDED
+    state "WaitingForCardNumber" as Machine_Name.WaitingForCardNumber
+    state "ProcessingPayment\nentry / AttemptPayment" as Machine_Name.ProcessingPayment
+    state "PaymentFailed" as Machine_Name.PaymentFailed
+    state "BillPaid" as Machine_Name.BillPaid
+  }
+```
+
 <!--
 Transitions between states are explicit, so the likelihood of unintended behaviour is heavily reduced, and we produce more robust applications. 
 
@@ -846,6 +992,46 @@ And thanks to the visual tools (and I am excited to see what's next with AI) des
 
 ## StateCharts are fully serializable
 
+<br/>
+
+```json {all}
+{
+  "id": "Machine Name",
+  "initial": "WaitingForCardNumber",
+  "states": {
+    "WaitingForCardNumber": {
+      "on": {
+        "CARD_NUMBER_PROVIDED": {
+          "target": "ProcessingPayment"
+        }
+      }
+    },
+    "ProcessingPayment": {
+      "entry": {
+        "type": "AttemptPayment"
+      },
+      "on": {
+        "PAYMENT_FAILED": {
+          "target": "PaymentFailed"
+        },
+        "PAYMENT_SUCCEDED": {
+          "target": "BillPaid"
+        }
+      }
+    },
+    "PaymentFailed": {
+      "on": {
+        "TRY_ANOTHER_CARD": {
+          "target": "WaitingForCardNumber"
+        }
+      }
+    },
+    "BillPaid": {}
+  }
+}
+
+```
+
 <!--
 And statecharts are so invested in being its own JSON or SCXML format is great because are both formats that are fully serializable and persistent.
 
@@ -856,17 +1042,8 @@ One could just store the JSON definition along side the persistence of the curre
 
 ---
 
-```mermaid
-flowchart LR
-    A[ProcessPayment] --> B[MarkTableAsClosed]
-    B --> C[SendThankYouEmail]
-```
-
-
----
-
 ## Long Running Process
 
-- Involve multiple systems: they can be orchestration or choreography
+- Communication: they can be orchestration or choreography
 - Persistent: because the process may last forever even server restarts
-- Versionable: because business requirements may change
+- Versionable: because business requirements may change during application lifetime
