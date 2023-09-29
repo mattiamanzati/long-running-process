@@ -15,16 +15,26 @@ download: true
 canvasWidth: 850
 ---
 
-
+---
+layout: fact
 ---
 
-## The Italian Restaurant
+# THANK YOU ORGANIZERS!
+---
+layout: image-right
+image: /image-restaurant.jpg
+---
+
+## 🤌 Italian Restaurant 🤌
+<br/>
 
 - Customer is seated to a table
 - The customer places his order
 - The kitchen cooks the food
 - The customer eats the food
 - The customer pays
+
+...gotta go Fast!
 
 <!--
 I want to tell you a story, a story about a very special restaurant, lost in the peaks of an unknown mountain in a very small village in Italy.
@@ -76,10 +86,19 @@ The young boy leaves his village, and arrives here in Alicante, and starts knock
 -->
 
 ---
-layout: fact
+layout: image-right
+image: /image-restaurant-success.jpg
 ---
 
 ## Modeling software around the Real World
+<br/>
+
+- People arrive and seat
+- Choose what to eat (lot of time!)
+- The waiter takes the order (and brings it to kitchen)
+- The chef cooks (time again!)
+- Food is served and people eat (guess what? time!)
+- Customer request the bill and pay
 
 <!--
 He quickly realized that his dad was right, the real world is very different from his hometown village.
@@ -89,20 +108,25 @@ The waiter comes and people place their order.
 The kitchen starts cooking.
 Food is served.
 The customer have a coffee and leaves.
-
-Everything takes time to happen.
-It may be a very small amount, or it could be hours, but everything takes time.
-And software should be built around real world needs right?
 -->
 
 ---
-layout: fact
+layout: image-left
+image: /image-time.jpg
 ---
 
 ## We have been LIED
-Everything is asynchronous, nothing is sync
+<br/>
+
+- Everything takes time to happen
+- The waiter waited for us to choose
+- The owner waited before placing the bill
 
 <!--
+Everything takes time to happen.
+It may be a very small amount, or it could be hours, but everything takes time.
+And software should be built around real world needs right?
+
 Our young developer learned the hard truth about the world. Nothing is synchronous.
 
 Most of the processes happens over time, and over time they may wait for some condition to happen or process to complete before moving on to the next step.
@@ -202,8 +226,8 @@ That sounds awesome, right?
 ---
 
 
-## How the Real World actually works
-
+## How the Real World works: interleaved interactions
+<br/>
 
 - Customer A is seated to a table
 - Customer B is seated to another table next to Customer A
@@ -242,6 +266,8 @@ Or maybe the same apply to a set of automated operations that usually takes a fe
 ---
 
 ## /api/checkout
+<br/>
+
 ```ts{all}
 export function postCheckout(payload){
   const amountDue = askForBill(payload.tableId)
@@ -322,8 +348,12 @@ When dealing with different systems, like for example external APIs, databases, 
 -->
 
 ---
+layout: image-right
+image: /image-restaurant-2.jpg
+---
 
 ## Real World Problems
+<br/>
 
 - Customer is seated to a table
 - The customer places his order for a steak
@@ -349,7 +379,7 @@ layout: fact
 ---
 
 ## Upfront checks aren't an option
-What about possible downstream concurrency problems?
+What about possible downstream problems?
 
 <!--
 And we cannot also expect to be able to put a check upfront to avoid every possible failure that may happen downstream.
@@ -374,8 +404,12 @@ In both cases we are dealing and interacting with services that given an input, 
 -->
 
 ---
+layout: image-left
+image: /image-old-computer.jpg
+---
 
 ## User is an external service too
+<br/>
 
 - Input: screen
 - Output: key presses and clicks
@@ -615,6 +649,7 @@ And in that wayyou can guarantee that your system will be someday back into a co
 ---
 
 ## Three kind of transactions: Compensable
+<br/>
 
 - Define both the transaction and the compensating transaction
 - Should not rely on "just setting the old value back"
@@ -638,6 +673,7 @@ Process Payment of 10 euros may be compensated by Process Refund of 10 euros, no
 ---
 
 ## Three kind of transactions: Retriable
+<br/>
 
 - Can't fail but instead may be retried infinitely
 
@@ -652,6 +688,7 @@ And this kind of transactions introduce a completely different problem that's wo
 ---
 
 ## Three kind of transactions: Pivot
+<br/>
 
 - Not compensable in any way
 - Once committed, there is no more going back
@@ -669,6 +706,7 @@ Maybe we try to speak to the customer and ask for another card, or just let him 
 ---
 
 ## Asynchronous checkout in plain JavaScript
+<br/>
 
 ```ts {all}
 async function checkout(tableId: number, cardNumber: string, email: string) {
@@ -722,6 +760,7 @@ One way to do it would be to replace all of our calls with a "step" function cal
 ---
 
 ## Simple implementation
+<br/>
 
 ```ts {all}
 async function saga<R>(definition: (step: StepFn) => Promise<R>) {
@@ -782,7 +821,6 @@ Back to our example we can se now how the flow will run upon a failure of the cl
 ---
 
 ## Waiting is part of the business process
-
 <br/>
 
 ```mermaid
@@ -805,6 +843,7 @@ layout: fact
 ---
 
 ## What happens if the process stops?
+<br/>
 
 <!--
 Sure, our asyncronous function may just hang for 1 week with no problem, but what if for some reason the servers restart do that mean that we lose all our running process state?
@@ -893,6 +932,7 @@ And that means that when we build our user interfaces we actually always need to
 ---
 
 ## ...ACID maybe?
+<br/>
 
 - Atomic: all transactions or compensating transactions will be executed
 - Consistent: integrity in each transaction and eventually consistent across services
@@ -911,6 +951,7 @@ But we seem to lack isolation here...
 ---
 
 ## Lack of isolation
+<br/>
 
 - Potential inconsistent reads
 - Potential writes in between other flows
@@ -941,6 +982,8 @@ layout: fact
 ---
 
 ## StateCharts
+
+`(state, event) => state + effects[]`
 
 <!--
 The best option is to thing that middle state of processing as an explicit state, and that brings us to the world of state machines.
@@ -980,6 +1023,7 @@ Unlike sagas where a transaction may take time to complete, in statecharts state
 ---
 
 ## StateCharts are a DSL rather than Code
+<br/>
 
 - Can be visually shown
 - Can be understood by domain experts
@@ -1038,15 +1082,143 @@ And thanks to the visual tools (and I am excited to see what's next with AI) des
 <!--
 And statecharts are so invested in being its own JSON or SCXML format is great because are both formats that are fully serializable and persistent.
 
-And that property of being fully serializable is great because it allows to have a cheap solution for versioning long running processes.
+And this is even better because it actually splits the implementation of actions that need to be triggered from the orchestration of the flow, which makes it even more reusable.
+-->
+
+---
+
+## Evolving flows
+<br/>
+
+```mermaid { scale: 0.7 }
+stateDiagram-v2
+  state "Machine Name" as Machine_Name {
+    [*] --> Machine_Name.WaitingForChefGreeting
+    Machine_Name.WaitingForChefGreeting --> Machine_Name.WaitingForCardNumber : CHEF_GREETED
+    Machine_Name.WaitingForChefGreeting --> Machine_Name.WaitingForCardNumber : after(10000)ms
+    Machine_Name.WaitingForCardNumber --> Machine_Name.ProcessingPayment : CARD_NUMBER_PROVIDED
+    Machine_Name.ProcessingPayment --> Machine_Name.PaymentFailed : PAYMENT_FAILED
+    Machine_Name.ProcessingPayment --> Machine_Name.BillPaid : PAYMENT_SUCCEDED
+    Machine_Name.PaymentFailed --> Machine_Name.WaitingForCardNumber : TRY_ANOTHER_CARD
+    state "WaitingForChefGreeting" as Machine_Name.WaitingForChefGreeting
+    state "WaitingForCardNumber" as Machine_Name.WaitingForCardNumber
+    state "ProcessingPayment\nentry / AttemptPayment" as Machine_Name.ProcessingPayment
+    state "PaymentFailed" as Machine_Name.PaymentFailed
+    state "BillPaid" as Machine_Name.BillPaid
+  }
+```
+<!--
+Long running processes introduce also an additional challenge we did'nt care about up to now.
+What if our business process changes? What if for example now the chef wants to greet the customer before he leaves the restaurant.
+
+What happens to our currently running flows? We are basically asking our code to update as it is running! What do we do?
+-->
+
+---
+
+## Evolving flows: I do not care!
+<br/>
+
+- Short lived flows
+- I Expect to have a consistent UX
+
+<!--
+Maybe you don't care about upgrading running flows, and that's fine.
+Maybe they are not so long lived that you just want to keep running the old version until you reach the final step.
+
+And thanks to statecharts definition being fully serializable is great because it allows to have a cheap solution for versioning long running processes by exactly doing that.
 
 One could just store the JSON definition along side the persistence of the current state of the machine, and only implementations of services and actions are injected at runtime into the interpreter.
 -->
 
 ---
 
-## Long Running Process
+## Evolving flows: Restore machine state!
+<br/>
 
-- Communication: they can be orchestration or choreography
-- Persistent: because the process may last forever even server restarts
-- Versionable: because business requirements may change during application lifetime
+- Work for connections changes or new state added
+- What to do when we delete states?
+
+<!--
+Another option is to just restore the machine state and continue from there, and that may work only for some changes of our statechart.
+If for example we deleted one state, and the workflow instance we are trying to update is exactly in that state, we basically have a stale workflow, that will not evolve into any new state. And that's actually really really bad.
+-->
+
+---
+
+## Evolving flows: Upgrade events
+<br/>
+
+- Do not delete previous state node
+- Restore machine state with the new definition
+- Trigger upgrade event
+- Send new incoming events
+
+<!--
+An intermediate approach may be something I call "upgrade events", which is basically saying lets go full on with this approach.
+We will basically never deprecate any state in our state machine, we first restore the machine state, and then we just send an upgrade event before sending any other new event. And this upgrade event will basically start the transition from the current old deprecated state to a new supported one.
+-->
+
+---
+
+## Evolving flows: Replay events
+<br/>
+
+
+<!--
+
+-->
+
+---
+## Concurrent Executions
+<br/>
+
+- The waiter comes to the table of 3 people
+- The customer order 2 beers and a coke
+- The waiter brings the order to kitchen
+- Another waiter comes
+- The confused customer order 1 beer and 2 coke
+- The table receives 2 times the order
+
+<!--
+Another thing we now need to ensure is that there is no concurrent execution of the side effects described by our statecharts.
+
+Let's say that for example...
+
+How do we do that?
+-->
+---
+
+## Concurrent execution: Real world
+<br/>
+
+- The boss assigns ranges of tables to each waiter
+- Each waiter will pick up only orders of the range od tables it got assigned to
+
+
+---
+
+## Concurrent execution: Sharding
+<br/>
+
+- A shard manager will assign range of entities to each worker
+- Each worker gets a range of entities to manage and will care only about that
+- We ensured that only one worker will process each entity
+
+---
+
+## Long Running Process: The challenges
+<br/>
+
+- *Communication*: they can be orchestration or choreography
+- *Distributed transactions*: data may be "dirty" between step
+- *Persistent*: because the process may last forever even server restarts
+- *Evolving*: because business requirements may change during application lifetime
+- *Single executor per workflow*: you do not want concurrency issues right?
+
+---
+layout: center
+---
+
+# Thanks for your time!
+- Twitter: @mattiamanzati
