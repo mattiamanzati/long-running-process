@@ -20,6 +20,28 @@ layout: fact
 ---
 
 # THANK YOU ORGANIZERS!
+
+---
+layout: fact
+---
+
+# Processes, StateCharts and WorkFlows
+...and React?
+
+---
+
+## React Slide
+<br/>
+
+```tsx {all}
+export function Counter(){
+  const [count, setCount] = React.useState(0);
+  return <button onClick={() => setCount(previous => previous + 1)}>
+    Count: {count}
+  </button>
+}
+```
+
 ---
 layout: image-right
 image: /image-restaurant.jpg
@@ -1146,6 +1168,19 @@ If for example we deleted one state, and the workflow instance we are trying to 
 
 ---
 
+## Evolving flows: Replay events
+<br/>
+
+- Load the new definition with the default state
+- Replay all the events that occurred before
+- What to do with side effects?
+
+<!--
+
+-->
+
+---
+
 ## Evolving flows: Upgrade events
 <br/>
 
@@ -1159,15 +1194,6 @@ An intermediate approach may be something I call "upgrade events", which is basi
 We will basically never deprecate any state in our state machine, we first restore the machine state, and then we just send an upgrade event before sending any other new event. And this upgrade event will basically start the transition from the current old deprecated state to a new supported one.
 -->
 
----
-
-## Evolving flows: Replay events
-<br/>
-
-
-<!--
-
--->
 
 ---
 ## Concurrent Executions
