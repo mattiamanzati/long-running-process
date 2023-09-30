@@ -21,6 +21,25 @@ layout: fact
 
 # THANK YOU ORGANIZERS!
 
+
+---
+layout: image-left
+image: /image-me.jpg
+---
+
+# Ego Slide
+<br/>
+
+- Push buttons
+- Type things
+- Break stuff
+- Wear sweatshirt as cape
+
+---
+layout: image
+image: /effect-days.jpeg
+---
+
 ---
 layout: fact
 ---
@@ -385,7 +404,7 @@ image: /image-restaurant-2.jpg
 <!--
 And is this a problem that only happens in code due to external services?
 
-I would say that's not true, let's imagine the following:
+I would say that's not true, also in real life,  let's imagine the following:
 
 - Customer is seated to a table
 - The customer places his order for a steak
@@ -408,9 +427,7 @@ And we cannot also expect to be able to put a check upfront to avoid every possi
 
 Back to our asynchronous restaurant we cannot expect the waiter to go check for the availability of each plate as the customer places an order for them. 
 
-What would happen if for example there are two waiters each one serving a customer that would like to place an order for a steak each and only one is left in the fridge?
-
-And even if somehow we put a global lock and prevent selling two steaks, what do we do if later the chef burns the food so we are left with no more steaks?
+And even if somehow we are able to, what do we do if later the chef burns the food so we are left with no more steaks?
 -->
 
 ---
@@ -446,6 +463,19 @@ The user is just a service like any other that recives as input a question on th
 
 
 ---
+layout: image-right
+image: /image-ichnusa.jpeg
+---
+
+## Beer slide
+<br/>
+
+- Everyone else had one
+- So why should'nt I
+- Please send me free beer
+- Man, I love lists.
+
+---
 layout: fact
 ---
 
@@ -463,13 +493,19 @@ Does it mean that we can also guarantee that the interaction between these two s
 -->
 
 ---
-layout: fact
+layout: image-left
+image: /image-saga.png
 ---
 
-## ...distributed transactions?
+## ...long lived transactions?
+<br/>
+
+- Sagas!
+- in 1987 they had computers!
+
 
 <!--
-Well here we come to the concept of a distributed transaction.
+Well here we come to the concept of a Saga.
 
 The idea is, instead of having a big long transaction that spans the entire flow of multiple steps that could involve external systems as we have seen before, you could actually break it up into many smaller transactions, and perform them one after the other, and they are hold on together by some kind of messaging or signaling.
 -->
@@ -532,7 +568,7 @@ And that is because if that step fails, we end up stopping our entire flow with 
 ```ts
 module Payment
   on "BillRequested"
-    processPaiment()
+    processPayment()
     raise event PaymentProcessed()
 end module
 
@@ -566,7 +602,7 @@ layout: two-cols
 ```ts
 module Payment
   on "ProcessPaymentRequest"
-    processPaiment()
+    processPayment()
     raise event PaymentProcessed()
 end module
 
@@ -621,6 +657,31 @@ end module
 
 It is also better because if a new flow is introduced, let's say for example that when the bill is requested we whant to deliver a goodby liquor for free to the table, we do not need to change the code of the existing services, but instead we introduce a new orchestrator that listens for PaymentRequest, and places an order of a liquor automatically on the table based on the number of guest seated.
 -->
+
+---
+
+# Events as a whole
+
+```ts
+module ProductsOrderedReport
+  state totalAmount = 0
+
+  on "ProductOrdered"
+    totalAmount += event.amount
+
+  on "OrderCancelled"
+    totalAmount -= event.amount
+end module
+```
+
+<!--
+Soon you'll also realize that having events in your application is great because if you fully embrace them, everything becames a process.
+
+Even reporting can be now built by processing event data, and that opens a whole new discussion.
+
+But I just wanted to point it out because even this reporting module has the same challenges we are looking into today.
+-->
+
 ---
 layout: fact
 ---
@@ -937,19 +998,7 @@ And the same must be also done for the running of compensation transactions.
 As you can see, now if we attempt to call again our LRP we go straight to the result, because all of the steps has already been executed.
 -->
 
----
-layout: fact
----
 
-## LRP means... long to reply APIs?
-When should we reply to our request? Or should we wait for the completion?
-
-<!--
-But back to our checkout API, not that we have a LRP, does that means that unfortunately we cannot simply reply back with the response to our API?. We need to either wait for all, or reply back as soon we received the request. But then the client needs to poll. (and actually that’s a better UX!)
-
-And that means that when we build our user interfaces we actually always need to think that every action may actually fail or hang. One approach could be of using SSE to stream notifications from the server to the UI in order to notify when the performed action is actually completed.
-
--->
 
 ---
 
@@ -1040,8 +1089,9 @@ stateDiagram-v2
 <!--
 Transitions between states are explicit, so the likelihood of unintended behaviour is heavily reduced, and we produce more robust applications. 
 
-Unlike sagas where a transaction may take time to complete, in statecharts state transition should be considered as immediate. There are no intermediate states between one and the other, making explicit waiting states like "waiting for payment to complete" etc... 
+Unlike sagas where a transaction may take time to complete, in statecharts state transition should be considered as immediate. There are no intermediate non explicit states between one and the other, making explicit waiting states like "waiting for payment to complete" etc...
 -->
+
 ---
 
 ## StateCharts are a DSL rather than Code
@@ -1174,11 +1224,19 @@ If for example we deleted one state, and the workflow instance we are trying to 
 - Load the new definition with the default state
 - Replay all the events that occurred before
 - What to do with side effects?
+- Works as long your entire machine is deterministic
 
 <!--
+Another approach may be to just replay all the events that the previous machine received, right? 
+I fetch from some storage all events related to this flow, and then I pass them to the new machine definition.
 
+Well, that could work, but the requirement is that our machine now needs to be entirely deterministic.
+By that I mean that we cannot rely on side effects on the external world, all data and conditions should be based on data that is either on the event or the state machine.
 -->
 
+---
+layout: image-right
+image: /image-upgrade-flow.png
 ---
 
 ## Evolving flows: Upgrade events
@@ -1196,6 +1254,7 @@ We will basically never deprecate any state in our state machine, we first resto
 
 
 ---
+
 ## Concurrent Executions
 <br/>
 
@@ -1232,6 +1291,20 @@ How do we do that?
 - We ensured that only one worker will process each entity
 
 ---
+layout: fact
+---
+
+## LRP means... long to reply APIs?
+When should we reply to our request? Or should we wait for the completion?
+
+<!--
+But back to our checkout API, not that we have a LRP, does that means that unfortunately we cannot simply reply back with the response to our API?. We need to either wait for all, or reply back as soon we received the request. But then the client needs to poll. (and actually that’s a better UX!)
+
+And that means that when we build our user interfaces we actually always need to think that every action may actually fail or hang. One approach could be of using SSE to stream notifications from the server to the UI in order to notify when the performed action is actually completed.
+
+-->
+
+---
 
 ## Long Running Process: The challenges
 <br/>
@@ -1243,8 +1316,9 @@ How do we do that?
 - *Single executor per workflow*: you do not want concurrency issues right?
 
 ---
-layout: center
+layout: image-left
+image: /image-me.jpg
 ---
 
 # Thanks for your time!
-- Twitter: @mattiamanzati
+- Twitter/X: @mattiamanzati
